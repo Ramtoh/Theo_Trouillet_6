@@ -1,6 +1,7 @@
 const express = require('express');
-
-require('dotenv').config();
+const rateLimit = require('express-rate-limit'); // package rate limiter (imposer une limite aux de requetes envoyees au serveur dans un temps imparti)
+const toobusy = require('toobusy-js'); // lorsque le serveur lag et qu'il recoit beaucoup trop de requete, toobusy previent en retournant un serveur toobusy et stop le processus
+require('dotenv').config(); // package dotenv permettant de cacher les informations d'acces a la DB dans le code
 
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -32,5 +33,34 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 
 app.use('/api/auth', userRoutes);
 app.use('/api/sauces', stuffRoutes);
+
+// express-rate-limiter // limite a un certain temps et un nombre de requetes par session 
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes par session
+    max: 100, // Limite a 100 requetes par session
+});
+
+app.use(limiter);
+
+// toobusy // middleware qui bloque le serveur lorsque le serveur est trop occupe 
+app.use(function(req, res, next) {
+    if (toobusy()) {
+        res.send(503, "Le serveur est occupé");
+    } else {
+        next();
+    }
+});
+
+app.get('/', function(req, res) {
+    let i = 0;
+    while (i < 1e5) i++;
+    res.send("J'ai compté jusqu'à " + i);
+});
+
+process.on('SINGINT', function() {
+    server.close();
+    toobusy.shutdown();
+    process.exit();
+});
 
 module.exports = app;

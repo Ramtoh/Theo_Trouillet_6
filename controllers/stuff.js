@@ -77,17 +77,25 @@ exports.likeDislikeSauce = (req, res) => {
               break;
 
           case 0:
-              Sauce.updateOne(
-                  { _id: s.id },
-                  {
-                      likes: s.likes - 1,
-                      $pull: { usersLiked: req.body.userId },
-                  } || {
-                      dislikes: s.dislikes - 1,
-                      $pull: { usersDisliked: req.body.userId },
-                  }
-              ).then(() => res.status(200).json(s));
-              console.log("Neutral");
+            Sauce.findOne({_id : req.params.id})
+            .then(sauce => {
+                if (sauce.usersLiked.includes(req.body.userId)){
+                  Sauce.updateOne({_id : req.params.id}, {$inc : {likes : -1 }, /*Suppress like*/
+                    $pull : { usersLiked : req.body.userId} /*Delete user id from table*/
+                  })
+                    .then(() => res.status(201).json({message : "j'aime a été retiré !"}))
+                    .catch(error => res.status(500).json({error}))
+                }
+                else{
+                  Sauce.updateOne({_id : req.params.id}, {$inc : {dislikes : -1 }, /*Suppress dislike*/
+                    $pull : { usersDisliked : req.body.userId} /*Delete user id from table*/
+                  })
+                    .then(() => res.status(201).json({message : "je n'aime pas été retiré !"}))
+                    .catch(error => res.status(500).json({ error }))
+                }
+
+            }) 
+            .catch(error => res.status(500).json({ error}))
               break;
       }
   });
