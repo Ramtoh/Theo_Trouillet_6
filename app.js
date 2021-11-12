@@ -1,4 +1,6 @@
 const express = require('express');
+const helmet = require('helmet');
+const cookieSession = require('cookie-session');
 const rateLimit = require('express-rate-limit'); // package rate limiter (imposer une limite aux de requetes envoyees au serveur dans un temps imparti)
 const toobusy = require('toobusy-js'); // lorsque le serveur lag et qu'il recoit beaucoup trop de requete, toobusy previent en retournant un serveur toobusy et stop le processus
 require('dotenv').config(); // package dotenv permettant de cacher les informations d'acces a la DB dans le code
@@ -17,6 +19,7 @@ mongoose.connect(`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PA
     .catch(() => console.log('Connexion MongoDB échouée'));
 
 const app = express();
+app.use(helmet());
 app.use(cors());
 
 app.use((req, res, next) => {
@@ -26,13 +29,22 @@ app.use((req, res, next) => {
     next();
 });
 
-
 app.use(express.json());
 
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
 app.use('/api/auth', userRoutes);
 app.use('/api/sauces', stuffRoutes);
+
+
+// cookie session //
+
+app.use(cookieSession({
+    name: 'session',
+    keys: [`${process.env.FIRST_COOKIE_KEY}`, `${process.env.SECOND_COOKIE_KEY}`],
+  
+    maxAge: 24 * 60 * 60 * 1000 // 24 heures avant expiration
+  }))
 
 // express-rate-limiter // limite a un certain temps et un nombre de requetes par session 
 const limiter = rateLimit({
